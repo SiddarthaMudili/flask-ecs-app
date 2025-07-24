@@ -1,0 +1,31 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+
+# VS Code and other IDE/editor configs
+.vscode/
+.idea/
+
+# Terraform state and local cache
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+
+# OS / System files
+.DS_Store
+Thumbs.db
+
+# Docker-related
+*.log
+*.pid
+*.swp
+.dockerignore
+
+# Ignore .env or secret config if you add one later
+.env
+
