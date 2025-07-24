@@ -44,6 +44,6 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        working-directory:  
+        working-directory: ./terraform
         run: terraform apply -auto-approve -var="docker_image_url=$IMAGE_URI"
 
