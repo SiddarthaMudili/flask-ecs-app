@@ -15,22 +15,78 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Set desired count to 0 (if service exists)
+      - name: Set ECS desired count to 0
         run: |
           aws ecs update-service \
             --cluster flask-cluster \
             --service flask-service \
-            --desired-count 0 || echo "Service not found or already deleted"
+            --desired-count 0 || echo "Service not found"
 
-      - name: Delete ECS service
+      - name: Delete ECS Service
         run: |
           aws ecs delete-service \
             --cluster flask-cluster \
             --service flask-service \
-            --force || echo "Service not found or already deleted"
+            --force || echo "Service not found"
 
-      - name: Delete ECS cluster
+      - name: Wait for ECS service deletion
+        run: |
+          echo "Waiting 20s for ECS service deletion..."
+          sleep 20
+
+      - name: Delete ECS Cluster
         run: |
           aws ecs delete-cluster \
-            --cluster flask-cluster || echo "Cluster not found or already deleted"
+            --cluster flask-cluster || echo "Cluster not found"
+
+      - name: Delete Load Balancers
+        run: |
+          LBS=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].LoadBalancerArn' --output text)
+          for lb in $LBS; do
+            echo "Deleting Load Balancer: $lb"
+            aws elbv2 delete-load-balancer --load-balancer-arn $lb || echo "Error deleting $lb"
+          done
+
+      - name: Delete Target Groups
+        run: |
+          TGS=$(aws elbv2 describe-target-groups --query 'TargetGroups[*].TargetGroupArn' --output text)
+          for tg in $TGS; do
+            echo "Deleting Target Group: $tg"
+            aws elbv2 delete-target-group --target-group-arn $tg || echo "Error deleting $tg"
+          done
+
+      - name: Detach and Delete IAM Roles
+        run: |
+          ROLE_NAME="ecsTaskExecutionRole"
+          POLICIES=$(aws iam list-attached-role-policies --role-name $ROLE_NAME --query 'AttachedPolicies[*].PolicyArn' --output text)
+          for policy in $POLICIES; do
+            echo "Detaching $policy from $ROLE_NAME"
+            aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn $policy
+          done
+          echo "Deleting role $ROLE_NAME"
+          aws iam delete-role --role-name $ROLE_NAME || echo "Role not found"
+
+      - name: Delete Security Groups
+        run: |
+          SG_IDS=$(aws ec2 describe-security-groups --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text)
+          for sg in $SG_IDS; do
+            echo "Deleting Security Group: $sg"
+            aws ec2 delete-security-group --group-id $sg || echo "Error deleting $sg"
+          done
+
+      - name: Delete Subnets and VPCs
+        run: |
+          SUBNET_IDS=$(aws ec2 describe-subnets --query 'Subnets[*].SubnetId' --output text)
+          for sn in $SUBNET_IDS; do
+            echo "Deleting Subnet: $sn"
+            aws ec2 delete-subnet --subnet-id $sn || echo "Error deleting $sn"
+          done
+
+          VPC_IDS=$(aws ec2 describe-vpcs --query 'Vpcs[*].VpcId' --output text)
+          for vpc in $VPC_IDS; do
+            if [[ "$vpc" != *"default"* ]]; then
+              echo "Deleting VPC: $vpc"
+              aws ec2 delete-vpc --vpc-id $vpc || echo "Error deleting $vpc"
+            fi
+          done
 
