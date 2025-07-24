@@ -1,40 +1,36 @@
-name: Destroy Terraform Infrastructure
+name: Destroy ECS Resources
 
 on:
-  workflow_dispatch:  # Enables manual trigger from GitHub UI
+  workflow_dispatch:  # Manual trigger
 
 jobs:
-  destroy:
+  destroy-ecs:
     runs-on: ubuntu-latest
-    environment: production
-
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-      IMAGE_TAG: latest
-      IMAGE_URI: ${{ secrets.ECR_REPOSITORY }}:latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ap-south-1
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.5
+      - name: Set desired count to 0 (if service exists)
+        run: |
+          aws ecs update-service \
+            --cluster flask-cluster \
+            --service flask-service \
+            --desired-count 0 || echo "Service not found or already deleted"
 
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
+      - name: Delete ECS service
+        run: |
+          aws ecs delete-service \
+            --cluster flask-cluster \
+            --service flask-service \
+            --force || echo "Service not found or already deleted"
 
-      - name: Terraform Destroy
-        working-directory: ./terraform
-        run: terraform destroy -auto-approve -var="docker_image_url=$IMAGE_URI"
+      - name: Delete ECS cluster
+        run: |
+          aws ecs delete-cluster \
+            --cluster flask-cluster || echo "Cluster not found or already deleted"
 
