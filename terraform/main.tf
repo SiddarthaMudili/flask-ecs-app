@@ -112,3 +112,39 @@ resource "aws_ecs_service" "flask_service" {
   depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_attach]
 }
 
+container_definitions = jsonencode([
+  {
+    name      = "flask-app",
+    image     = var.docker_image_url,
+    portMappings = [
+      {
+        containerPort = 5000,
+        hostPort      = 5000
+      }
+    ]
+  },
+  {
+    name      = "datadog-agent",
+    image     = "gcr.io/datadoghq/agent:latest",
+    essential = true,
+    environment = [
+      {
+        name  = "DD_API_KEY",
+        value = var.datadog_api_key  # You can store this securely
+      },
+      { name = "ECS_FARGATE", value = "true" },
+      { name = "DD_LOGS_ENABLED", value = "true" },
+      { name = "DD_APM_ENABLED", value = "true" },
+      { name = "DD_DOGSTATSD_NON_LOCAL_TRAFFIC", value = "true" }
+    ],
+    logConfiguration = {
+      logDriver = "awslogs",
+      options = {
+        awslogs-group         = "/ecs/datadog-agent",
+        awslogs-region        = "ap-south-1",
+        awslogs-stream-prefix = "ecs"
+      }
+    }
+  }
+])
+

@@ -3,3 +3,13 @@ variable "docker_image_url" {
   type        = string
 }
 
+resource "aws_ssm_parameter" "datadog_api_key" {
+  name  = "/datadog/api_key"
+  type  = "SecureString"
+  value = DD 
+
+  tags = {
+    Environment = "prod"
+  }
+}
+
