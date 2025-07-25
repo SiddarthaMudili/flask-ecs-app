@@ -1,12 +1,12 @@
-name: CI/CD - Build Docker, Push to ECR, Deploy via Terraform
- 
+name: CI/CD - Build & Push Docker, Deploy ECS Service
+
 on:
   push:
     branches: [ "main" ]
 
 jobs:
   deploy:
-    name: Deploy Flask to ECS
+    name: Deploy Flask Service to Existing ECS Cluster
     runs-on: ubuntu-latest
 
     env:
@@ -14,6 +14,9 @@ jobs:
       ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
       IMAGE_TAG: latest
       IMAGE_URI: ${{ secrets.ECR_REPOSITORY }}:latest
+      ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+      ECS_SERVICE_NAME: ${{ secrets.ECS_SERVICE_NAME }}
+      ECS_TASK_DEF_TEMPLATE: task-definition.json
 
     steps:
       - name: Checkout code
@@ -34,16 +37,20 @@ jobs:
           docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Render ECS task definition
+        run: |
+          sed "s|<IMAGE_URI>|$IMAGE_URI|g" ecs-task-def-template.json > $ECS_TASK_DEF_TEMPLATE
+
+      - name: Register new ECS task definition
+        id: register-task-def
+        uses: aws-actions/amazon-ecs-register-task-definition@v1
         with:
-          terraform_version: 1.7.5
+          task-definition: ${{ env.ECS_TASK_DEF_TEMPLATE }}
 
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
-
-      - name: Terraform Apply
-        working-directory: ./terraform
-        run: terraform apply -auto-approve -var="docker_image_url=$IMAGE_URI" -var="datadog_api_key=$DD_API_KEY"
+      - name: Deploy new task definition to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          cluster: ${{ env.ECS_CLUSTER_NAME }}
+          service: ${{ env.ECS_SERVICE_NAME }}
+          task-definition: ${{ steps.register-task-def.outputs.task-definition-arn }}
 

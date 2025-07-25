@@ -74,6 +74,25 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_attach" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_ecs_service" "flask_service" {
+  name            = "flask-service"
+  cluster         = aws_ecs_cluster.flask_cluster.id
+  task_definition = aws_ecs_task_definition.flask_task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.public.id]
+    assign_public_ip = true
+    security_groups  = [aws_security_group.ecs_sg.id]
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution_attach
+  ]
+}
+
+
 resource "aws_ecs_task_definition" "flask_task" {
   family                   = "flask-task"
   network_mode             = "awsvpc"
@@ -92,45 +111,6 @@ resource "aws_ecs_task_definition" "flask_task" {
           hostPort      = 5000
         }
       ]
-    },
-    {
-      name      = "datadog-agent",
-      image     = "public.ecr.aws/datadog/agent:latest",
-      essential = true,
-      environment = [
-        {
-          name  = "DD_API_KEY",
-          value = var.datadog_api_key
-        },
-        {
-          name  = "DD_SITE",
-          value = "datadoghq.com"
-        },
-        {
-          name  = "ECS_FARGATE",
-          value = "true"
-        },
-        {
-          name  = "DD_LOGS_ENABLED",
-          value = "true"
-        },
-        {
-          name  = "DD_APM_ENABLED",
-          value = "true"
-        },
-        {
-          name  = "DD_DOGSTATSD_NON_LOCAL_TRAFFIC",
-          value = "true"
-        }
-      ],
-      logConfiguration = {
-        logDriver = "awslogs",
-        options = {
-          awslogs-group         = "/ecs/datadog-agent",
-          awslogs-region        = "ap-south-1",
-          awslogs-stream-prefix = "ecs"
-        }
-      }
     }
   ])
 }
