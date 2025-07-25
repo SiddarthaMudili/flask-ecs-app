@@ -1,5 +1,5 @@
 name: CI/CD - Build Docker, Push to ECR, Deploy via Terraform
-
+ 
 on:
   push:
     branches: [ "main" ]
