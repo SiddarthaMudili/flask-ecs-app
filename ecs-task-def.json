@@ -8,7 +8,7 @@
   "containerDefinitions": [
     {
       "name": "flask-app",
-      "image": "",
+      "image": "470296731078.dkr.ecr.ap-south-1.amazonaws.com/flask-ecs-app",
       "portMappings": [
         {
           "containerPort": 5000,
