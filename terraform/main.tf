@@ -115,3 +115,4 @@ resource "aws_ecs_task_definition" "flask_task" {
   ])
 }
 
+
