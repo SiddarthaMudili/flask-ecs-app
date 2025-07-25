@@ -45,5 +45,5 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve -var="docker_image_url=$IMAGE_URI" -var="datadog-api-key=$DD_API_KEY"
+        run: terraform apply -auto-approve -var="docker_image_url=$IMAGE_URI" -var="datadog_api_key=$DD_API_KEY"
 
