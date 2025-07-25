@@ -39,7 +39,7 @@ jobs:
 
       - name: Render ECS task definition
         run: |
-          sed "s|<IMAGE_URI>|$IMAGE_URI|g" $ECS_TASK_DEF_TEMPLATE > rendered-task-def.json
+          sed "s|470296731078.dkr.ecr.ap-south-1.amazonaws.com/flask-ecs-app|$IMAGE_URI|g" $ECS_TASK_DEF_TEMPLATE > rendered-task-def.json
 
       - name: Deploy to ECS Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
